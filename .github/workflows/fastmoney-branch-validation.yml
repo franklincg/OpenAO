@@ -1,0 +1,39 @@
+name: FAST_MONEY Branch Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  fastmoney-server:
+    if: startsWith(github.head_ref, 'fastmoney-openao')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: server/pnpm-lock.yaml
+      - name: Install server dependencies
+        working-directory: server
+        run: pnpm install --frozen-lockfile
+      - name: Focused FAST_MONEY regression
+        working-directory: server
+        shell: bash
+        run: |
+          if node -e "const p=require('./package.json'); process.exit(p.scripts?.['test:connection-policy'] ? 0 : 1)"; then pnpm run test:connection-policy; fi
+          if node -e "const p=require('./package.json'); process.exit(p.scripts?.['test:client-activity'] ? 0 : 1)"; then pnpm run test:client-activity; fi
+      - name: Lint
+        working-directory: server
+        run: pnpm run lint
+      - name: Typecheck
+        working-directory: server
+        run: pnpm exec tsc --noEmit
+      - name: Build
+        working-directory: server
+        run: pnpm run build
