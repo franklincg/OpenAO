@@ -1,7 +1,6 @@
 export type DuplicateAccountPolicyEntry = {
     idUser: string;
     accountId?: string | null;
-    ip?: string | null;
     miningActive: boolean;
 };
 
@@ -14,6 +13,7 @@ export function getDuplicateAccountIdlePenalizedClientIds(
     for (const entry of entries) {
         const accountId = entry.accountId?.trim();
 
+        // Never fall back to public IP when the authenticated account identity is absent.
         if (!accountId) {
             continue;
         }
@@ -24,15 +24,7 @@ export function getDuplicateAccountIdlePenalizedClientIds(
     }
 
     for (const accountEntries of clientsByAccount.values()) {
-        if (accountEntries.length < 2) {
-            continue;
-        }
-
-        const hasActiveMiner = accountEntries.some(
-            (entry) => entry.miningActive,
-        );
-
-        if (!hasActiveMiner) {
+        if (accountEntries.length < 2 || !accountEntries.some((entry) => entry.miningActive)) {
             continue;
         }
 
