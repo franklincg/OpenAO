@@ -8,37 +8,19 @@ function asArray(result: Set<string>): string[] {
 assert.deepEqual(
     asArray(
         getDuplicateAccountIdlePenalizedClientIds([
-            {
-                idUser: "alice",
-                accountId: "account-a",
-                ip: "203.0.113.10",
-                miningActive: true,
-            },
-            {
-                idUser: "bob",
-                accountId: "account-b",
-                ip: "203.0.113.10",
-                miningActive: false,
-            },
+            { idUser: "alice", accountId: "account-a", miningActive: true },
+            { idUser: "bob", accountId: "account-b", miningActive: false },
         ]),
     ),
     [],
-    "different accounts sharing a public IP must not penalize each other",
+    "different accounts must not be penalized together even when the runtime transport IP is shared",
 );
 
 assert.deepEqual(
     asArray(
         getDuplicateAccountIdlePenalizedClientIds([
-            {
-                idUser: "main",
-                accountId: "same-account",
-                miningActive: true,
-            },
-            {
-                idUser: "scout",
-                accountId: "same-account",
-                miningActive: false,
-            },
+            { idUser: "main", accountId: "same-account", miningActive: true },
+            { idUser: "scout", accountId: "same-account", miningActive: false },
         ]),
     ),
     ["scout"],
@@ -48,20 +30,23 @@ assert.deepEqual(
 assert.deepEqual(
     asArray(
         getDuplicateAccountIdlePenalizedClientIds([
-            {
-                idUser: "first",
-                accountId: "same-account",
-                miningActive: false,
-            },
-            {
-                idUser: "second",
-                accountId: "same-account",
-                miningActive: false,
-            },
+            { idUser: "first", accountId: "same-account", miningActive: false },
+            { idUser: "second", accountId: "same-account", miningActive: false },
         ]),
     ),
     [],
-    "same-account sessions without an active miner should keep the normal idle timeout",
+    "same-account sessions without an active miner keep the normal idle timeout",
+);
+
+assert.deepEqual(
+    asArray(
+        getDuplicateAccountIdlePenalizedClientIds([
+            { idUser: "unknown-miner", accountId: undefined, miningActive: true },
+            { idUser: "unknown-player", accountId: undefined, miningActive: false },
+        ]),
+    ),
+    [],
+    "missing account identity must never fall back to a shared transport identity",
 );
 
 console.log("connection policy tests passed");
