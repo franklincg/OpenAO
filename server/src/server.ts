@@ -369,9 +369,9 @@ function trackClientActivity(ws: RuntimeClient, packageID: number) {
     ws.packetCount = Number(ws.packetCount ?? 0) + 1;
 
     if (isPingPacket) {
-        // A valid keepalive ping proves the client is still connected.
-        // Refresh only the idle timestamp; keep ping traffic out of non-ping accounting.
-        ws.lastActivityAt = now;
+        // Keep transport liveness separate from real player activity so
+        // keepalive traffic cannot contaminate AFK/gameplay metrics.
+        ws.lastPingAt = now;
         return;
     }
 
@@ -723,7 +723,7 @@ function processIdleCharactersTick(now: number) {
             continue;
         }
 
-        if (typeof client.lastActivityAt !== "number") {
+        if (typeof client.lastActivityAt !== "number" && typeof client.lastPingAt !== "number") {
             client.lastActivityAt = now;
             continue;
         }
@@ -732,7 +732,7 @@ function processIdleCharactersTick(now: number) {
         const effectiveIdleTimeoutMs = isDuplicateIpScout ? DUPLICATE_IP_IDLE_TIMEOUT_MS : idleCharacterTimeoutMs;
         const idleReferenceAt = isDuplicateIpScout
             ? getScoutIdleReferenceAt(client, user)
-            : Number(client.lastActivityAt ?? now);
+            : getClientLivenessReferenceAt(client, now);
 
         if (now - idleReferenceAt < effectiveIdleTimeoutMs) {
             continue;
@@ -744,6 +744,14 @@ function processIdleCharactersTick(now: number) {
 
         game.closeForce(idUser);
     }
+}
+
+function getClientLivenessReferenceAt(client: RuntimeClient, now: number): number {
+    const lastActivityAt = Number(client.lastActivityAt ?? 0);
+    const lastPingAt = Number(client.lastPingAt ?? 0);
+    const connectedAt = Number(client.connectedAt ?? now);
+
+    return Math.max(lastActivityAt, lastPingAt, connectedAt);
 }
 
 function getScoutIdleReferenceAt(client: RuntimeClient, user: ServerCharacter): number {

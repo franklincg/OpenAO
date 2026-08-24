@@ -14,7 +14,8 @@ assert.ok(pingMatch, "ping branch must remain explicit");
 
 const pingBranch = pingMatch[1];
 assert.match(fn, /ws\.packetCount = Number\(ws\.packetCount \?\? 0\) \+ 1;/, "all packets increment packetCount");
-assert.match(pingBranch, /ws\.lastActivityAt = now;/, "ping must refresh client liveness");
+assert.match(pingBranch, /ws\.lastPingAt = now;/, "ping must refresh transport liveness");
+assert.ok(!pingBranch.includes("lastActivityAt"), "ping must not reset real player activity");
 assert.match(pingBranch, /return;/, "ping must return before non-ping accounting");
 
 for (const forbidden of [
@@ -30,12 +31,21 @@ for (const forbidden of [
 const pingBlockEnd = fn.indexOf("}", fn.indexOf("if (isPingPacket)"));
 const nonPingTail = fn.slice(pingBlockEnd + 1);
 assert.match(nonPingTail, /ws\.lastPacketAt = now;/, "non-ping packets still refresh lastPacketAt");
-assert.match(nonPingTail, /ws\.lastActivityAt = now;/, "non-ping packets still refresh activity");
+assert.match(nonPingTail, /ws\.lastActivityAt = now;/, "non-ping packets still refresh real activity");
+
+const helperStart = source.indexOf("function getClientLivenessReferenceAt");
+const helperEnd = source.indexOf("\n}\n\nfunction getScoutIdleReferenceAt", helperStart);
+assert.ok(helperStart >= 0 && helperEnd > helperStart, "liveness helper must remain present");
+const helperFn = source.slice(helperStart, helperEnd + 2);
+assert.match(helperFn, /client\.lastActivityAt/, "real activity contributes to liveness");
+assert.match(helperFn, /client\.lastPingAt/, "keepalive ping contributes to liveness");
+assert.match(helperFn, /Math\.max\(lastActivityAt, lastPingAt, connectedAt\)/, "freshest liveness signal wins");
 
 const idleStart = source.indexOf("function processIdleCharactersTick");
-const idleEnd = source.indexOf("\n}\n\nfunction getScoutIdleReferenceAt", idleStart);
+const idleEnd = source.indexOf("\n}\n\nfunction getClientLivenessReferenceAt", idleStart);
 assert.ok(idleStart >= 0 && idleEnd > idleStart, "idle sweep must remain present");
 const idleFn = source.slice(idleStart, idleEnd + 2);
-assert.match(idleFn, /client\.lastActivityAt/, "idle cleanup must continue to use lastActivityAt");
+assert.match(idleFn, /getClientLivenessReferenceAt\(client, now\)/, "normal sessions use transport liveness");
+assert.match(idleFn, /getScoutIdleReferenceAt\(client, user\)/, "duplicate scouts keep real-activity policy");
 
 console.log("client activity policy tests passed");
