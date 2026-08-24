@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
-const source = readFileSync(new URL("../server.ts", import.meta.url), "utf8");
+const source = readFileSync(resolve(process.cwd(), "src/server.ts"), "utf8");
 const start = source.indexOf("function trackClientActivity");
 const end = source.indexOf("\n}\n\n(async () => {", start);
 
