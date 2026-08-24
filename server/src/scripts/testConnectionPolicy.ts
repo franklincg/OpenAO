@@ -5,6 +5,7 @@ function asArray(result: Set<string>): string[] {
     return Array.from(result).sort();
 }
 
+// Cover CGNAT separation, same-account miner/scout, same-account non-miners, and missing account identity.
 assert.deepEqual(
     asArray(
         getDuplicateAccountIdlePenalizedClientIds([
