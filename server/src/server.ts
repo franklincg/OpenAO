@@ -369,6 +369,9 @@ function trackClientActivity(ws: RuntimeClient, packageID: number) {
     ws.packetCount = Number(ws.packetCount ?? 0) + 1;
 
     if (isPingPacket) {
+        // A valid keepalive ping proves the client is still connected.
+        // Refresh only the idle timestamp; keep ping traffic out of non-ping accounting.
+        ws.lastActivityAt = now;
         return;
     }
 
